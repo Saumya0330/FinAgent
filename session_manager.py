@@ -19,6 +19,7 @@ from typing import Optional
 SESSION_DIR   = "./sessions"
 DOC_CACHE_DIR = "./doc_cache"
 MAX_CACHED_DOCS = 10
+_MEMORY_SESSIONS = {}  # fallback in-memory store
 
 for _d in [SESSION_DIR, DOC_CACHE_DIR]:
     os.makedirs(_d, exist_ok=True)
@@ -49,7 +50,15 @@ def create_session(file_name: str, file_hash: str) -> str:
     return session_id
 
 
+# def get_session(session_id: str) -> Optional[dict]:
+#     path = Path(SESSION_DIR) / f"{session_id}.json"
+#     if not path.exists():
+#         return None
+#     with open(path, encoding="utf-8") as f:
+#         return json.load(f)
 def get_session(session_id: str) -> Optional[dict]:
+    if session_id in _MEMORY_SESSIONS:           # check memory first
+        return _MEMORY_SESSIONS[session_id]
     path = Path(SESSION_DIR) / f"{session_id}.json"
     if not path.exists():
         return None
@@ -66,10 +75,18 @@ def update_session(session_id: str, updates: dict) -> None:
     _save_session(session_id, session)
 
 
+# def _save_session(session_id: str, data: dict) -> None:
+#     path = Path(SESSION_DIR) / f"{session_id}.json"
+#     with open(path, "w", encoding="utf-8") as f:
+#         json.dump(data, f, indent=2, ensure_ascii=False)
 def _save_session(session_id: str, data: dict) -> None:
+    _MEMORY_SESSIONS[session_id] = data          # always keep in memory
     path = Path(SESSION_DIR) / f"{session_id}.json"
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+    except Exception:
+        pass
 
 
 def list_sessions(limit: int = 20) -> list:
